@@ -20,7 +20,7 @@ g_rate_limit = 300
 start_time = time.time()
 now = time.time()
 try:
-    conversion_rates = json.load(open("text_dump.txt"))
+    conversion_rates = json.load(open("~/.conversion_rates_dump.txt"))
 except:
     conversion_rates = {}
 
@@ -148,4 +148,4 @@ for r in response['response']['Attribute']:
                         #i += 1
                 i += 1
 
-json.dump(conversion_rates, open("text_dump.txt",'w'))
+json.dump(conversion_rates, open("~/.conversion_rates_dump.txt",'w'))
