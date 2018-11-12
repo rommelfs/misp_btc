@@ -20,7 +20,7 @@ g_rate_limit = 300
 start_time = time.time()
 now = time.time()
 try:
-    conversion_rates = json.load(open("~/.conversion_rates_dump.txt"))
+    conversion_rates = json.load(open("conversion_rates_dump.txt"))
 except:
     conversion_rates = {}
 
@@ -77,6 +77,11 @@ def convert(btc, timestamp):
     e = eur * btc
     return u,e
 
+def print_result(btc, epoch):
+    datetime = time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(int(epoch)))
+    value = float(btc / 100000000 )
+    u,e = convert(value, transactions['time'])
+    print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
 
 def init(url, key):
     return PyMISP(misp_url, misp_key, misp_verifycert, 'json')
@@ -88,9 +93,12 @@ try:
     if sys.argv[1] == "-h":
         print("Usage: %s [time]" % sys.argv[0])
         print("       where [time] can be a statement recognized by MISP, e.g. 1d, 1h")
-        sys.exit(1)
+        print("       default = 1 day (1d)")
+        sys.exit(0)
     else:
         timerange = sys.argv[1]
+except SystemExit:
+    sys.exit(0)
 except:
     timerange = "1d"
 
@@ -126,26 +134,23 @@ for r in response['response']['Attribute']:
                 for tx in transactions['inputs']:
                     script_old = tx['script']
                     if tx['prev_out']['value'] != 0 and tx['prev_out']['addr'] == btc:
-                        datetime = time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(int(transactions['time'])))
-                        value = float(tx['prev_out']['value'] / 100000000 )
-                        u,e = convert(value, transactions['time'])
-                        print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
+                        value = tx['prev_out']['value']
+                        print_result(value, transactions['time'])
                         if script_old != tx['script']:
                             i += 1
                         else:
                             sum_counter += 1
-                            sum += value
+                            sum += (value / 100000000)
                 if sum_counter > 1:
                     u,e = convert(sum, transactions['time'])
                     print("\t\t\t\t\t----------------------------------------------")
                     print("#" + str(n_tx - i) + "\t\t\t\t  Sum:\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR\n".format(sum, u, e).rstrip('0'))
                 for tx in transactions['out']:
                     if tx['value'] != 0 and tx['addr'] == btc:
-                        datetime = time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(int(transactions['time'])))
-                        value = float(tx['value'] / 100000000 )
-                        u,e = convert(value, transactions['time'])
-                        print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
-                        #i += 1
+                        print_result(tx['value'], transactions['time'])
                 i += 1
 
-json.dump(conversion_rates, open("~/.conversion_rates_dump.txt",'w'))
+with open('conversion_rates_dump.txt', 'w') as f:
+  json.dump(conversion_rates, f, ensure_ascii=False)
+
+
