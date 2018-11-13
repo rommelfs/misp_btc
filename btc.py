@@ -25,10 +25,14 @@ except:
     conversion_rates = {}
 
 def get_consumption(output=False):
-    req = requests.get(converter_rls)
-    jreq = req.json()
-    minute = str(jreq['Minute']['CallsLeft']['Histo'])
-    hour   = str(jreq['Hour']['CallsLeft']['Histo'])
+    try:
+        req = requests.get(converter_rls)
+        jreq = req.json()
+        minute = str(jreq['Data']['calls_left']['minute'])
+        hour   = str(jreq['Data']['calls_left']['hour'])
+    except:
+        minute = str(-1)
+        hour = str(-1)
     if output is True:
         print("Calls left this minute / hour: " + minute + " / " + hour)
     return minute, hour
