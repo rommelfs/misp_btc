@@ -19,6 +19,9 @@ converter_rls = 'https://min-api.cryptocompare.com/stats/rate/limit'
 g_rate_limit = 300
 start_time = time.time()
 now = time.time()
+s_in = {'BTC': 0, 'EUR': 0, 'USD': 0}
+s_out = {'BTC': 0, 'EUR': 0, 'USD': 0}
+
 try:
     conversion_rates = json.load(open("conversion_rates_dump.txt"))
 except:
@@ -81,32 +84,71 @@ def convert(btc, timestamp):
     e = eur * btc
     return u,e
 
-def print_result(btc, epoch):
+def print_result(btc, epoch, positive):
     datetime = time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(int(epoch)))
     value = float(btc / 100000000 )
     u,e = convert(value, transactions['time'])
-    print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
+    if positive:
+        print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
+        s_in['BTC'] += value
+        s_in['EUR'] += e
+        s_in['USD'] += u 
+    else:
+        print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
+        s_out['BTC'] += value
+        s_out['EUR'] += e
+        s_out['USD'] += u 
 
 def init(url, key):
-    return PyMISP(misp_url, misp_key, misp_verifycert, 'json')
+    return PyMISP(misp_url, misp_key, misp_verifycert, 'json', debug=False)
 
 
 m = init(misp_url, misp_key)
 
 try:
-    if sys.argv[1] == "-h":
-        print("Usage: %s [time]" % sys.argv[0])
-        print("       where [time] can be a statement recognized by MISP, e.g. 1d, 1h")
-        print("       default = 1 day (1d)")
+    if sys.argv[1] == "-a":
+        if len(sys.argv) < 3:
+            print("Using -a requires to specify a timeframe")
+            sys.exit(0)
+        else:
+            timestamp = sys.argv[2]
+        if len(sys.argv) == 4:
+            timestamp = [timestamp, sys.argv[3]]
+        response = m.search(controller='attributes', type_attribute="btc", timestamp=timestamp)
+    elif sys.argv[1] == "-e":
+        if len(sys.argv) < 3:
+            print("Using -e requires to specify a MISP event ID")
+            sys.exit(0)
+        else:
+            eventid = sys.argv[2] 
+            response = m.search(controller='attributes', type_attribute="btc", eventid=eventid)
+    elif sys.argv[1] == "-h":
+        print("Usage: %s [<TIME> | -e <EVENTID> | -a <TIMEFRAME> | -a <TIMEFRAME_FROM> <TIMEFRAME_TO>]" % sys.argv[0])
+        print("       where <TIME>, <TIMEFRAME>, <TIMEFRAME_FROM>, <TIMEFRAME_TO> can be a statement recognized by MISP, e.g. 1d, 1h")
+        print("       Just giving <TIME> by default shows all attributes of events published since <TIME>")
+        print("       Specifying -a is an attribute search and the time specified is related to the attribute modification/creation")
+        print("     or")
+        print("       -a <TIMEFRAME>")
+        print("     or")
+        print("       -a <TIMEFRAME_FROM> <TIMEFRAME_TO>")
+        print("     or")
+        print("       -e <EVENTID> where EVENTID is a valid MISP event ID")
         sys.exit(0)
     else:
         timerange = sys.argv[1]
 except SystemExit:
     sys.exit(0)
-except:
+except Exception as e:
+    print(e)
     timerange = "1d"
+    print("Defaulting to all attributes of events published during the last day")
+    
+try: timerange
+except NameError: timerange = None
 
-response = m.search(controller='attributes', type_attribute="btc", last=str(timerange))
+if timerange is not None:
+    response = m.search(controller='attributes', type_attribute="btc", last=str(timerange))
+
 for r in response['response']['Attribute']:
     btc = r['value']
     print("\nAddress:\t" + btc)
@@ -139,7 +181,7 @@ for r in response['response']['Attribute']:
                     script_old = tx['script']
                     if tx['prev_out']['value'] != 0 and tx['prev_out']['addr'] == btc:
                         value = tx['prev_out']['value']
-                        print_result(value, transactions['time'])
+                        print_result(value, transactions['time'], positive=False)
                         if script_old != tx['script']:
                             i += 1
                         else:
@@ -151,9 +193,12 @@ for r in response['response']['Attribute']:
                     print("#" + str(n_tx - i) + "\t\t\t\t  Sum:\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR\n".format(sum, u, e).rstrip('0'))
                 for tx in transactions['out']:
                     if tx['value'] != 0 and tx['addr'] == btc:
-                        print_result(tx['value'], transactions['time'])
+                        print_result(tx['value'], transactions['time'], positive=True)
                 i += 1
-
+if s_in['BTC'] > 0 or s_out['BTC'] > 0:
+    print("\n======================================================================================")
+print("Total received:\t{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_in['BTC'], s_in['USD'], s_in['EUR']).rstrip('2'))
+print("Total spent:\t{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_out['BTC'], s_out['USD'], s_out['EUR']).rstrip('0'))
 with open('conversion_rates_dump.txt', 'w') as f:
   json.dump(conversion_rates, f, ensure_ascii=False)
 
