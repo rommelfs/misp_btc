@@ -21,6 +21,9 @@ start_time = time.time()
 now = time.time()
 s_in = {'BTC': 0, 'EUR': 0, 'USD': 0}
 s_out = {'BTC': 0, 'EUR': 0, 'USD': 0}
+n_tx = 0
+i = 0
+btc = None
 
 try:
     conversion_rates = json.load(open("conversion_rates_dump.txt"))
@@ -87,7 +90,7 @@ def convert(btc, timestamp):
 def print_result(btc, epoch, positive):
     datetime = time.strftime("%d %b %Y %H:%M:%S %Z", time.localtime(int(epoch)))
     value = float(btc / 100000000 )
-    u,e = convert(value, transactions['time'])
+    u,e = convert(value, epoch)
     if positive:
         print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
         s_in['BTC'] += value
@@ -115,6 +118,12 @@ try:
         if len(sys.argv) == 4:
             timestamp = [timestamp, sys.argv[3]]
         response = m.search(controller='attributes', type_attribute="btc", timestamp=timestamp)
+    elif sys.argv[1] == "-b":
+        if len(sys.argv) < 3:
+            print("Using -b requires to specify a BTC address")
+            sys.exit(0)
+        else:
+             btc = sys.argv[2]
     elif sys.argv[1] == "-e":
         if len(sys.argv) < 3:
             print("Using -e requires to specify a MISP event ID")
@@ -123,7 +132,7 @@ try:
             eventid = sys.argv[2] 
             response = m.search(controller='attributes', type_attribute="btc", eventid=eventid)
     elif sys.argv[1] == "-h":
-        print("Usage: %s [<TIME> | -e <EVENTID> | -a <TIMEFRAME> | -a <TIMEFRAME_FROM> <TIMEFRAME_TO>]" % sys.argv[0])
+        print("Usage: %s [<TIME> | -b <BTC address> | -e <EVENTID> | -a <TIMEFRAME> | -a <TIMEFRAME_FROM> <TIMEFRAME_TO>]" % sys.argv[0])
         print("       where <TIME>, <TIMEFRAME>, <TIMEFRAME_FROM>, <TIMEFRAME_TO> can be a statement recognized by MISP, e.g. 1d, 1h")
         print("       Just giving <TIME> by default shows all attributes of events published since <TIME>")
         print("       Specifying -a is an attribute search and the time specified is related to the attribute modification/creation")
@@ -132,7 +141,9 @@ try:
         print("     or")
         print("       -a <TIMEFRAME_FROM> <TIMEFRAME_TO>")
         print("     or")
-        print("       -e <EVENTID> where EVENTID is a valid MISP event ID")
+        print("       -b <BTC address> where <BTC address> is a valid BTC address")
+        print("     or")
+        print("       -e <EVENTID> where <EVENTID> is a valid MISP event ID")
         sys.exit(0)
     else:
         timerange = sys.argv[1]
@@ -149,8 +160,10 @@ except NameError: timerange = None
 if timerange is not None:
     response = m.search(controller='attributes', type_attribute="btc", last=str(timerange))
 
-for r in response['response']['Attribute']:
-    btc = r['value']
+
+def work_on(btc):
+    global n_tx
+    global i
     print("\nAddress:\t" + btc)
     try:
         req = requests.get(blockchain_all+btc+"?limit=50&filter=5")
@@ -158,7 +171,7 @@ for r in response['response']['Attribute']:
     except Exception as e:
         #print(e)
         print(req.text)
-        continue
+        #continue
 
     n_tx = jreq['n_tx']
     balance = float(jreq['final_balance'] / 100000000)
@@ -195,6 +208,13 @@ for r in response['response']['Attribute']:
                     if tx['value'] != 0 and tx['addr'] == btc:
                         print_result(tx['value'], transactions['time'], positive=True)
                 i += 1
+if btc is not None:
+    work_on(btc)
+else:
+    for r in response['response']['Attribute']:
+        btc = r['value']
+        work_on(btc)
+
 if s_in['BTC'] > 0 or s_out['BTC'] > 0:
     print("\n======================================================================================")
 print("Total received:\t{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_in['BTC'], s_in['USD'], s_in['EUR']).rstrip('2'))
