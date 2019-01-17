@@ -24,13 +24,14 @@ s_out = {'BTC': 0, 'EUR': 0, 'USD': 0}
 n_tx = 0
 i = 0
 btc = None
-
+jreq = None
 try:
     conversion_rates = json.load(open("conversion_rates_dump.txt"))
 except:
     conversion_rates = {}
 
 def get_consumption(output=False):
+    global jreq
     try:
         req = requests.get(converter_rls)
         jreq = req.json()
@@ -164,6 +165,7 @@ if timerange is not None:
 def work_on(btc):
     global n_tx
     global i
+    global jreq
     print("\nAddress:\t" + btc)
     try:
         req = requests.get(blockchain_all+btc+"?limit=50&filter=5")
