@@ -1,5 +1,6 @@
 # misp_btc
 get BTC addresses from MISP and fetch BTC transactions 
+Bonus: specify a BTC address and don't use MISP
 
 # Description
 Use PyMISP to connect to MISP and fetch a list of BTC addresses in a given time range.
