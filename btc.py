@@ -188,7 +188,15 @@ def work_on(btc):
         print("--------------------------------------------------------------------------------------")
     i = 0
     while i < n_tx:
-        req = requests.get(blockchain_all+btc+"?limit=50&offset="+str(i)+"&filter=5")
+        try:
+            req = requests.get(blockchain_all+btc+"?limit=50&offset="+str(i)+"&filter=5")
+        except Exception as e:
+            print(e)
+            time.sleep(3)
+            try:
+                req = requests.get(blockchain_all+btc+"?limit=50&offset="+str(i)+"&filter=5")
+            except:
+                sys.exit(1)
         jreq = req.json()
         if jreq['txs']:
             for transactions in jreq['txs']:
@@ -197,12 +205,16 @@ def work_on(btc):
                 for tx in transactions['inputs']:
                     script_old = tx['script']
                     try:
-                        addr = tx['prev_out']['addr']
+                        addr_in = tx['prev_out']['addr']
                     except KeyError:
-                        addr = None
-        
-                    if tx['prev_out']['value'] != 0 and addr == btc:
-                        value = tx['prev_out']['value']
+                        addr_in = None
+       
+                    try:
+                        prev_out = tx['prev_out']['value']
+                    except KeyError:
+                        prev_out = None 
+                    if prev_out is not None and prev_out != 0 and addr_in == btc:
+                        value = prev_out
                         print_result(value, transactions['time'], positive=False)
                         if script_old != tx['script']:
                             i += 1
@@ -214,7 +226,11 @@ def work_on(btc):
                     print("\t\t\t\t\t----------------------------------------------")
                     print("#" + str(n_tx - i) + "\t\t\t\t  Sum:\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR\n".format(sum, u, e).rstrip('0'))
                 for tx in transactions['out']:
-                    if tx['value'] != 0 and tx['addr'] == btc:
+                    try:
+                        addr_out = tx['addr']
+                    except KeyError:
+                        addr_out = None
+                    if tx['value'] != 0 and addr_out == btc:
                         print_result(tx['value'], transactions['time'], positive=True)
                 i += 1
 
