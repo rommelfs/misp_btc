@@ -174,6 +174,7 @@ def work_on(btc):
     except Exception as e:
         #print(e)
         print(req.text)
+        return
         #continue
 
     n_tx = jreq['n_tx']
@@ -195,7 +196,12 @@ def work_on(btc):
                 sum_counter = 0
                 for tx in transactions['inputs']:
                     script_old = tx['script']
-                    if tx['prev_out']['value'] != 0 and tx['prev_out']['addr'] == btc:
+                    try:
+                        addr = tx['prev_out']['addr']
+                    except KeyError:
+                        addr = None
+        
+                    if tx['prev_out']['value'] != 0 and addr == btc:
                         value = tx['prev_out']['value']
                         print_result(value, transactions['time'], positive=False)
                         if script_old != tx['script']:
@@ -211,6 +217,8 @@ def work_on(btc):
                     if tx['value'] != 0 and tx['addr'] == btc:
                         print_result(tx['value'], transactions['time'], positive=True)
                 i += 1
+
+
 if btc is not None:
     work_on(btc)
 else:
