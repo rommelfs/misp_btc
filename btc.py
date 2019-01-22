@@ -166,7 +166,8 @@ def work_on(btc):
     global n_tx
     global i
     global jreq
-    print("\nAddress:\t" + btc)
+    print("--------------------------------------------------------------------------------------")
+    print("Address:\t" + btc)
     try:
         req = requests.get(blockchain_all+btc+"?limit=50&filter=5")
         jreq = req.json()
@@ -183,7 +184,7 @@ def work_on(btc):
     print(output.format(balance, rcvd, sent))
     print("Transactions:\t" + str(n_tx))
     if n_tx > 0:
-        print("======================================================================================")
+        print("--------------------------------------------------------------------------------------")
     i = 0
     while i < n_tx:
         req = requests.get(blockchain_all+btc+"?limit=50&offset="+str(i)+"&filter=5")
@@ -218,10 +219,11 @@ else:
         work_on(btc)
 
 if s_in['BTC'] > 0 or s_out['BTC'] > 0:
-    print("\n======================================================================================")
-print("Total received:\t{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_in['BTC'], s_in['USD'], s_in['EUR']).rstrip('2'))
-print("Total spent:\t{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_out['BTC'], s_out['USD'], s_out['EUR']).rstrip('0'))
+        print("--------------------------------------------------------------------------------------")
+print("\t\t\tTotal received:\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_in['BTC'], s_in['USD'], s_in['EUR']).rstrip('2'))
+print("\t\t\tTotal spent:\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_out['BTC'], s_out['USD'], s_out['EUR']).rstrip('0'))
+print("--------------------------------------------------------------------------------------")
 with open('conversion_rates_dump.txt', 'w') as f:
-  json.dump(conversion_rates, f, ensure_ascii=False)
+    json.dump(conversion_rates, f, ensure_ascii=False)
 
 
