@@ -96,12 +96,12 @@ def print_result(btc, epoch, positive):
         print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
         s_in['BTC'] += value
         s_in['EUR'] += e
-        s_in['USD'] += u 
+        s_in['USD'] += u
     else:
         print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
         s_out['BTC'] += value
         s_out['EUR'] += e
-        s_out['USD'] += u 
+        s_out['USD'] += u
 
 def init(url, key):
     return PyMISP(misp_url, misp_key, misp_verifycert, 'json', debug=False)
@@ -130,7 +130,7 @@ try:
             print("Using -e requires to specify a MISP event ID")
             sys.exit(0)
         else:
-            eventid = sys.argv[2] 
+            eventid = sys.argv[2]
             response = m.search(controller='attributes', type_attribute="btc", eventid=eventid)
     elif sys.argv[1] == "-h":
         print("Usage: %s [<TIME> | -b <BTC address> | -e <EVENTID> | -a <TIMEFRAME> | -a <TIMEFRAME_FROM> <TIMEFRAME_TO>]" % sys.argv[0])
@@ -154,7 +154,7 @@ except Exception as e:
     print(e)
     timerange = "1d"
     print("Defaulting to all attributes of events published during the last day")
-    
+
 try: timerange
 except NameError: timerange = None
 
@@ -208,11 +208,11 @@ def work_on(btc):
                         addr_in = tx['prev_out']['addr']
                     except KeyError:
                         addr_in = None
-       
+
                     try:
                         prev_out = tx['prev_out']['value']
                     except KeyError:
-                        prev_out = None 
+                        prev_out = None
                     if prev_out is not None and prev_out != 0 and addr_in == btc:
                         value = prev_out
                         print_result(value, transactions['time'], positive=False)
