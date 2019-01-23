@@ -25,6 +25,7 @@ n_tx = 0
 i = 0
 btc = None
 jreq = None
+
 try:
     conversion_rates = json.load(open("conversion_rates_dump.txt"))
 except:
@@ -66,8 +67,6 @@ def convert(btc, timestamp):
         if g_rate_limit <= 10:
             minute, hour = get_consumption(output=True)
             if int(minute) <= 10:
-                #print(minute)
-                #get_consumption(output=True)
                 time.sleep(3)
             else:
                 print(minute)
@@ -78,7 +77,7 @@ def convert(btc, timestamp):
             jreq = req.json()
             usd = jreq['BTC']['USD']
             eur = jreq['BTC']['EUR']
-            # Since we have the rates, store them in the cache
+            # Since we have the rates, add them to the cache
             conversion_rates[date] = (usd, eur)
         except Exception as ex:
             print(ex)
@@ -105,6 +104,79 @@ def print_result(btc, epoch, positive):
 
 def init(url, key):
     return PyMISP(misp_url, misp_key, misp_verifycert, 'json', debug=False)
+
+def decorate():
+    print("--------------------------------------------------------------------------------------")
+
+def work_on(btc):
+    global n_tx
+    global i
+    global jreq
+    decorate()
+    print("Address:\t" + btc)
+    try:
+        req = requests.get(blockchain_all+btc+"?limit=50&filter=5")
+        jreq = req.json()
+    except Exception as e:
+        print(req.text)
+        return
+
+    n_tx = jreq['n_tx']
+    balance = float(jreq['final_balance'] / 100000000)
+    rcvd = float(jreq['total_received'] / 100000000)
+    sent = float(jreq['total_sent'] / 100000000)
+    output = 'Balance:\t{0:.10f} BTC (+{1:.10f} BTC / -{2:.10f} BTC)'
+    print(output.format(balance, rcvd, sent))
+    print("Transactions:\t" + str(n_tx))
+    if n_tx > 0:
+        decorate()
+    i = 0
+    while i < n_tx:
+        try:
+            req = requests.get(blockchain_all+btc+"?limit=50&offset="+str(i)+"&filter=5")
+        except Exception as e:
+            print(e)
+            time.sleep(3)
+            try:
+                req = requests.get(blockchain_all+btc+"?limit=50&offset="+str(i)+"&filter=5")
+            except:
+                sys.exit(1)
+        jreq = req.json()
+        if jreq['txs']:
+            for transactions in jreq['txs']:
+                sum = 0
+                sum_counter = 0
+                for tx in transactions['inputs']:
+                    script_old = tx['script']
+                    try:
+                        addr_in = tx['prev_out']['addr']
+                    except KeyError:
+                        addr_in = None
+
+                    try:
+                        prev_out = tx['prev_out']['value']
+                    except KeyError:
+                        prev_out = None
+                    if prev_out is not None and prev_out != 0 and addr_in == btc:
+                        value = prev_out
+                        print_result(value, transactions['time'], positive=False)
+                        if script_old != tx['script']:
+                            i += 1
+                        else:
+                            sum_counter += 1
+                            sum += (value / 100000000)
+                if sum_counter > 1:
+                    u,e = convert(sum, transactions['time'])
+                    print("\t\t\t\t\t----------------------------------------------")
+                    print("#" + str(n_tx - i) + "\t\t\t\t  Sum:\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR\n".format(sum, u, e).rstrip('0'))
+                for tx in transactions['out']:
+                    try:
+                        addr_out = tx['addr']
+                    except KeyError:
+                        addr_out = None
+                    if tx['value'] != 0 and addr_out == btc:
+                        print_result(tx['value'], transactions['time'], positive=True)
+                i += 1
 
 
 m = init(misp_url, misp_key)
@@ -161,80 +233,6 @@ except NameError: timerange = None
 if timerange is not None:
     response = m.search(controller='attributes', type_attribute="btc", last=str(timerange))
 
-
-def work_on(btc):
-    global n_tx
-    global i
-    global jreq
-    print("--------------------------------------------------------------------------------------")
-    print("Address:\t" + btc)
-    try:
-        req = requests.get(blockchain_all+btc+"?limit=50&filter=5")
-        jreq = req.json()
-    except Exception as e:
-        #print(e)
-        print(req.text)
-        return
-        #continue
-
-    n_tx = jreq['n_tx']
-    balance = float(jreq['final_balance'] / 100000000)
-    rcvd = float(jreq['total_received'] / 100000000)
-    sent = float(jreq['total_sent'] / 100000000)
-    output = 'Balance:\t{0:.10f} BTC (+{1:.10f} BTC / -{2:.10f} BTC)'
-    print(output.format(balance, rcvd, sent))
-    print("Transactions:\t" + str(n_tx))
-    if n_tx > 0:
-        print("--------------------------------------------------------------------------------------")
-    i = 0
-    while i < n_tx:
-        try:
-            req = requests.get(blockchain_all+btc+"?limit=50&offset="+str(i)+"&filter=5")
-        except Exception as e:
-            print(e)
-            time.sleep(3)
-            try:
-                req = requests.get(blockchain_all+btc+"?limit=50&offset="+str(i)+"&filter=5")
-            except:
-                sys.exit(1)
-        jreq = req.json()
-        if jreq['txs']:
-            for transactions in jreq['txs']:
-                sum = 0
-                sum_counter = 0
-                for tx in transactions['inputs']:
-                    script_old = tx['script']
-                    try:
-                        addr_in = tx['prev_out']['addr']
-                    except KeyError:
-                        addr_in = None
-
-                    try:
-                        prev_out = tx['prev_out']['value']
-                    except KeyError:
-                        prev_out = None
-                    if prev_out is not None and prev_out != 0 and addr_in == btc:
-                        value = prev_out
-                        print_result(value, transactions['time'], positive=False)
-                        if script_old != tx['script']:
-                            i += 1
-                        else:
-                            sum_counter += 1
-                            sum += (value / 100000000)
-                if sum_counter > 1:
-                    u,e = convert(sum, transactions['time'])
-                    print("\t\t\t\t\t----------------------------------------------")
-                    print("#" + str(n_tx - i) + "\t\t\t\t  Sum:\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR\n".format(sum, u, e).rstrip('0'))
-                for tx in transactions['out']:
-                    try:
-                        addr_out = tx['addr']
-                    except KeyError:
-                        addr_out = None
-                    if tx['value'] != 0 and addr_out == btc:
-                        print_result(tx['value'], transactions['time'], positive=True)
-                i += 1
-
-
 if btc is not None:
     work_on(btc)
 else:
@@ -242,11 +240,14 @@ else:
         btc = r['value']
         work_on(btc)
 
+# If we have a total sum, print it
 if s_in['BTC'] > 0 or s_out['BTC'] > 0:
-        print("--------------------------------------------------------------------------------------")
-print("\t\t\tTotal received:\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_in['BTC'], s_in['USD'], s_in['EUR']).rstrip('2'))
-print("\t\t\tTotal spent:\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_out['BTC'], s_out['USD'], s_out['EUR']).rstrip('0'))
-print("--------------------------------------------------------------------------------------")
+    decorate()
+    print("\t\t\tTotal received:\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_in['BTC'], s_in['USD'], s_in['EUR']).rstrip('2'))
+    print("\t\t\tTotal spent:\t {0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(s_out['BTC'], s_out['USD'], s_out['EUR']).rstrip('0'))
+    decorate()
+
+# Save the cache into a file
 with open('conversion_rates_dump.txt', 'w') as f:
     json.dump(conversion_rates, f, ensure_ascii=False)
 
