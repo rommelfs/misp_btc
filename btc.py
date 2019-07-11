@@ -56,7 +56,7 @@ def convert(btc, timestamp):
     if date in conversion_rates:
         (usd, eur) = conversion_rates[date]
     else:
-        # If not cached, we have to get the converion rates
+        # If not cached, we have to get the conversion rates
         # We have to be careful with rate limiting on the server side
         if g_rate_limit == 300:
             minute, hour = get_consumption()
@@ -105,8 +105,13 @@ def print_result(btc, epoch, positive):
 def init(url, key):
     return PyMISP(misp_url, misp_key, misp_verifycert, 'json', debug=False)
 
-def decorate():
-    print("--------------------------------------------------------------------------------------")
+def decorate(style=1):
+    # full line
+    if style is 1:
+        print("-"*86)
+    # half line, right aligned
+    if style is 2:
+        print("\t\t\t\t\t" + "-"*46)
 
 def work_on(btc):
     global n_tx
@@ -167,7 +172,7 @@ def work_on(btc):
                             sum += (value / 100000000)
                 if sum_counter > 1:
                     u,e = convert(sum, transactions['time'])
-                    print("\t\t\t\t\t----------------------------------------------")
+                    decorate(style=2)
                     print("#" + str(n_tx - i) + "\t\t\t\t  Sum:\t{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR\n".format(-sum, -u, -e).rstrip('0'))
                 for tx in transactions['out']:
                     try:
