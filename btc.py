@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pymisp import PyMISP
+from pymisp import PyMISP, MISPEvent, MISPObject
 from keys import misp_url, misp_key,misp_verifycert
 import argparse
 import os
@@ -97,7 +97,7 @@ def print_result(btc, epoch, positive):
         s_in['EUR'] += e
         s_in['USD'] += u
     else:
-        print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(value, u, e).rstrip('0'))
+        print("#" + str(n_tx - i) + "\t" + str(datetime) + "\t{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR".format(-value, -u, -e).rstrip('0'))
         s_out['BTC'] += value
         s_out['EUR'] += e
         s_out['USD'] += u
@@ -168,7 +168,7 @@ def work_on(btc):
                 if sum_counter > 1:
                     u,e = convert(sum, transactions['time'])
                     print("\t\t\t\t\t----------------------------------------------")
-                    print("#" + str(n_tx - i) + "\t\t\t\t  Sum:\t-{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR\n".format(sum, u, e).rstrip('0'))
+                    print("#" + str(n_tx - i) + "\t\t\t\t  Sum:\t{0:10.8f} BTC {1:10.2f} USD\t{2:10.2f} EUR\n".format(-sum, -u, -e).rstrip('0'))
                 for tx in transactions['out']:
                     try:
                         addr_out = tx['addr']
