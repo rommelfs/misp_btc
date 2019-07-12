@@ -55,19 +55,25 @@ Total spent:    1.32891228 BTC    7997.76 USD      7013.74 EUR
 
 # Usage
 ```
-# misp_btc$ python3.4 btc.py -h
-Usage: btc.py [<TIME> | -b <BTC address> | -e <EVENTID> | -a <TIMEFRAME> | -a <TIMEFRAME_FROM> <TIMEFRAME_TO>]
-       where <TIME>, <TIMEFRAME>, <TIMEFRAME_FROM>, <TIMEFRAME_TO> can be a statement recognized by MISP, e.g. 1d, 1h
-       Just giving <TIME> by default shows all attributes of events published since <TIME>
-       Specifying -a is an attribute search and the time specified is related to the attribute modification/creation
-     or
-       -a <TIMEFRAME>
-     or
-       -a <TIMEFRAME_FROM> <TIMEFRAME_TO>
-     or
-       -b <BTC address> where <BTC address> is a valid BTC address
-     or
-       -e <EVENTID> where <EVENTID> is a valid MISP event ID
+python3 ./btc.py -h
+usage: ./btc.py [-h] [-a [A [A ...]]] [-b B] [-e E] [-t T]
+                [--export-to-misp EXPORT_TO_MISP]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -a [A [A ...]]        -a <TIMEFRAME> | -a <TIMEFRAME_FROM> - a
+                        <TIMEFRAME_TO>]
+  -b B                  -b <BTC address>
+  -e E                  -e <MISP EVENT ID>
+  -t T                  -t <TIME>
+  --export-to-misp EXPORT_TO_MISP
+                        --export-to-MISP <MISP EVENT ID>
+
+where <TIME>, <TIMEFRAME>, <TIMEFRAME_FROM>, <TIMEFRAME_TO> can be a statement
+recognized by MISP, e.g. 1d, 1h Just giving <TIME> by default shows all
+attributes of events published since <TIME> Specifying -a is an attribute
+search and the time specified is related to the attribute
+modification/creation
 ```
 
 # Requirements
@@ -101,7 +107,7 @@ In https://github.com/MISP/misp-modules#expansion-modules is a module version of
 
 # Copyright
 
-Copyright: Sascha Rommelfangen, CIRCL, Smile g.i.e, 2018-11-12
+Copyright: Sascha Rommelfangen, CIRCL, Smile g.i.e, 2018-11-12 - 2019-07-12
 
 
 # License
