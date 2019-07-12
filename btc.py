@@ -187,7 +187,7 @@ def work_on(btc):
                             transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text", disable_correlation=True)
                             transaction.add_attribute('time', value=transactions['time'], type="datetime")
                             transaction.add_attribute('value_BTC', value=(-tx['prev_out']['value'] / 100000000), type="float")
-                            m.add_object(misp_event_export_id, transaction)
+                            #m.add_object(misp_event_export_id, transaction)
                             existing_event.add_object(transaction)
                         if script_old != tx['script']:
                             i += 1
@@ -208,14 +208,16 @@ def work_on(btc):
                         if args.export_to_misp is not None:
                             transaction = MISPObject('btc-transaction')
                             transaction.add_reference(wallet.uuid, "is transaction of")
-                            transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text")
+                            transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text", disable_correlation=True)
                             transaction.add_attribute('time', value=transactions['time'], type="datetime")
                             transaction.add_attribute('value_BTC', value=(tx['value'] / 100000000), type="float")
-                            m.add_object(misp_event_export_id, transaction)
+                            #m.add_object(misp_event_export_id, transaction)
                             existing_event.add_object(transaction)
                 i += 1
     if args.export_to_misp is not None:
         existing_event.add_object(wallet)
+        # For printing it as json
+        # print(existing_event.to_json())
         m.update(existing_event)
 
 m = init(misp_url, misp_key)
