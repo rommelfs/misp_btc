@@ -223,7 +223,7 @@ parser = argparse.ArgumentParser(prog=sys.argv[0],
                                  epilog='''
                                  where <TIME>, <TIMEFRAME>, <TIMEFRAME_FROM>, <TIMEFRAME_TO> can be a statement recognized by MISP, e.g. 1d, 1h
                                 Just giving <TIME> by default shows all attributes of events published since <TIME>
-                                Specifying -a is an attribute search and the time specified is related to the attribute modification/creation'
+                                Specifying -a is an attribute search and the time specified is related to the attribute modification/creation
                                 ''')
 parser.add_argument('-a', nargs='*', help='-a <TIMEFRAME> | -a <TIMEFRAME_FROM> - a <TIMEFRAME_TO>]')
 parser.add_argument('-b', help='-b <BTC address>')
