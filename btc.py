@@ -126,10 +126,23 @@ def work_on(btc):
         print(req.text)
         return
 
+
     n_tx = jreq['n_tx']
     balance = float(jreq['final_balance'] / 100000000)
     rcvd = float(jreq['total_received'] / 100000000)
     sent = float(jreq['total_sent'] / 100000000)
+
+    # Object related work
+    event = m.get(62413)
+    existing_event = MISPEvent()
+    existing_event.load(event)
+    wallet = MISPObject('btc-wallet')
+    wallet.add_attribute('wallet-address', value=btc, type="btc")
+    wallet.add_attribute('balance_BTC', value=balance, type="float")
+    wallet.add_attribute('BTC_received', value=rcvd, type="float")
+    wallet.add_attribute('BTC_sent', value=sent, type="float")
+    # wallet.add_attribute('time', value=)
+    m.add_object(62413, wallet)
     output = 'Balance:\t{0:.10f} BTC (+{1:.10f} BTC / -{2:.10f} BTC)'
     print(output.format(balance, rcvd, sent))
     print("Transactions:\t" + str(n_tx))
@@ -165,6 +178,12 @@ def work_on(btc):
                     if prev_out is not None and prev_out != 0 and addr_in == btc:
                         value = prev_out
                         print_result(value, transactions['time'], positive=False)
+                        transaction = MISPObject('btc-transaction')
+                        transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text", disable_correlation=True)
+                        transaction.add_attribute('time', value=transactions['time'], type="datetime")
+                        transaction.add_attribute('value_BTC', value=(-tx['prev_out']['value'] / 100000000), type="float")
+                        m.add_object(62413, transaction)
+                        existing_event.add_object(transaction)
                         if script_old != tx['script']:
                             i += 1
                         else:
@@ -181,8 +200,15 @@ def work_on(btc):
                         addr_out = None
                     if tx['value'] != 0 and addr_out == btc:
                         print_result(tx['value'], transactions['time'], positive=True)
+                        transaction = MISPObject('btc-transaction')
+                        transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text")
+                        transaction.add_attribute('time', value=transactions['time'], type="datetime")
+                        transaction.add_attribute('value_BTC', value=(tx['value'] / 100000000), type="float")
+                        m.add_object(62413, transaction)
+                        existing_event.add_object(transaction)
                 i += 1
-
+    existing_event.add_object(wallet)
+    m.update(existing_event)
 
 m = init(misp_url, misp_key)
 
