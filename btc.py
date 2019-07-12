@@ -145,7 +145,7 @@ def work_on(btc):
         wallet.add_attribute('BTC_received', value=rcvd, type="float")
         wallet.add_attribute('BTC_sent', value=sent, type="float")
         # wallet.add_attribute('time', value=)
-        m.add_object(62413, wallet)
+        m.add_object(misp_event_export_id, wallet)
     output = 'Balance:\t{0:.10f} BTC (+{1:.10f} BTC / -{2:.10f} BTC)'
     print(output.format(balance, rcvd, sent))
     print("Transactions:\t" + str(n_tx))
@@ -187,7 +187,7 @@ def work_on(btc):
                             transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text", disable_correlation=True)
                             transaction.add_attribute('time', value=transactions['time'], type="datetime")
                             transaction.add_attribute('value_BTC', value=(-tx['prev_out']['value'] / 100000000), type="float")
-                            m.add_object(62413, transaction)
+                            m.add_object(misp_event_export_id, transaction)
                             existing_event.add_object(transaction)
                         if script_old != tx['script']:
                             i += 1
@@ -211,7 +211,7 @@ def work_on(btc):
                             transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text")
                             transaction.add_attribute('time', value=transactions['time'], type="datetime")
                             transaction.add_attribute('value_BTC', value=(tx['value'] / 100000000), type="float")
-                            m.add_object(62413, transaction)
+                            m.add_object(misp_event_export_id, transaction)
                             existing_event.add_object(transaction)
                 i += 1
     if args.export_to_misp is not None:
