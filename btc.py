@@ -133,16 +133,19 @@ def work_on(btc):
     sent = float(jreq['total_sent'] / 100000000)
 
     # Object related work
-    event = m.get(62413)
-    existing_event = MISPEvent()
-    existing_event.load(event)
-    wallet = MISPObject('btc-wallet')
-    wallet.add_attribute('wallet-address', value=btc, type="btc")
-    wallet.add_attribute('balance_BTC', value=balance, type="float")
-    wallet.add_attribute('BTC_received', value=rcvd, type="float")
-    wallet.add_attribute('BTC_sent', value=sent, type="float")
-    # wallet.add_attribute('time', value=)
-    m.add_object(62413, wallet)
+    if args.export_to_misp is not None:
+        misp_event_export_id = args.export_to_misp
+        # todo: check if we have to right to add to the event
+        event = m.get(misp_event_export_id)
+        existing_event = MISPEvent()
+        existing_event.load(event)
+        wallet = MISPObject('btc-wallet')
+        wallet.add_attribute('wallet-address', value=btc, type="btc")
+        wallet.add_attribute('balance_BTC', value=balance, type="float")
+        wallet.add_attribute('BTC_received', value=rcvd, type="float")
+        wallet.add_attribute('BTC_sent', value=sent, type="float")
+        # wallet.add_attribute('time', value=)
+        m.add_object(62413, wallet)
     output = 'Balance:\t{0:.10f} BTC (+{1:.10f} BTC / -{2:.10f} BTC)'
     print(output.format(balance, rcvd, sent))
     print("Transactions:\t" + str(n_tx))
@@ -178,12 +181,14 @@ def work_on(btc):
                     if prev_out is not None and prev_out != 0 and addr_in == btc:
                         value = prev_out
                         print_result(value, transactions['time'], positive=False)
-                        transaction = MISPObject('btc-transaction')
-                        transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text", disable_correlation=True)
-                        transaction.add_attribute('time', value=transactions['time'], type="datetime")
-                        transaction.add_attribute('value_BTC', value=(-tx['prev_out']['value'] / 100000000), type="float")
-                        m.add_object(62413, transaction)
-                        existing_event.add_object(transaction)
+                        if args.export_to_misp is not None:
+                            transaction = MISPObject('btc-transaction')
+                            transaction.add_reference(wallet.uuid, "is transaction of")
+                            transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text", disable_correlation=True)
+                            transaction.add_attribute('time', value=transactions['time'], type="datetime")
+                            transaction.add_attribute('value_BTC', value=(-tx['prev_out']['value'] / 100000000), type="float")
+                            m.add_object(62413, transaction)
+                            existing_event.add_object(transaction)
                         if script_old != tx['script']:
                             i += 1
                         else:
@@ -200,63 +205,50 @@ def work_on(btc):
                         addr_out = None
                     if tx['value'] != 0 and addr_out == btc:
                         print_result(tx['value'], transactions['time'], positive=True)
-                        transaction = MISPObject('btc-transaction')
-                        transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text")
-                        transaction.add_attribute('time', value=transactions['time'], type="datetime")
-                        transaction.add_attribute('value_BTC', value=(tx['value'] / 100000000), type="float")
-                        m.add_object(62413, transaction)
-                        existing_event.add_object(transaction)
+                        if args.export_to_misp is not None:
+                            transaction = MISPObject('btc-transaction')
+                            transaction.add_reference(wallet.uuid, "is transaction of")
+                            transaction.add_attribute('transaction-number', value=str(n_tx - i), type="text")
+                            transaction.add_attribute('time', value=transactions['time'], type="datetime")
+                            transaction.add_attribute('value_BTC', value=(tx['value'] / 100000000), type="float")
+                            m.add_object(62413, transaction)
+                            existing_event.add_object(transaction)
                 i += 1
-    existing_event.add_object(wallet)
-    m.update(existing_event)
+    if args.export_to_misp is not None:
+        existing_event.add_object(wallet)
+        m.update(existing_event)
 
 m = init(misp_url, misp_key)
+parser = argparse.ArgumentParser(prog=sys.argv[0],
+                                 epilog='''
+                                 where <TIME>, <TIMEFRAME>, <TIMEFRAME_FROM>, <TIMEFRAME_TO> can be a statement recognized by MISP, e.g. 1d, 1h
+                                Just giving <TIME> by default shows all attributes of events published since <TIME>
+                                Specifying -a is an attribute search and the time specified is related to the attribute modification/creation'
+                                ''')
+parser.add_argument('-a', nargs='*', help='-a <TIMEFRAME> | -a <TIMEFRAME_FROM> - a <TIMEFRAME_TO>]')
+parser.add_argument('-b', help='-b <BTC address>')
+parser.add_argument('-e', type=int, help='-e <MISP EVENT ID>')
+parser.add_argument('-t', help='-t <TIME>')
+parser.add_argument('--export-to-misp', type=int, help='--export-to-MISP <MISP EVENT ID>')
+args = parser.parse_args()
 
-try:
-    if sys.argv[1] == "-a":
-        if len(sys.argv) < 3:
-            print("Using -a requires to specify a timeframe")
-            sys.exit(0)
-        else:
-            timestamp = sys.argv[2]
-        if len(sys.argv) == 4:
-            timestamp = [timestamp, sys.argv[3]]
-        response = m.search(controller='attributes', type_attribute="btc", timestamp=timestamp)
-    elif sys.argv[1] == "-b":
-        if len(sys.argv) < 3:
-            print("Using -b requires to specify a BTC address")
-            sys.exit(0)
-        else:
-             btc = sys.argv[2]
-    elif sys.argv[1] == "-e":
-        if len(sys.argv) < 3:
-            print("Using -e requires to specify a MISP event ID")
-            sys.exit(0)
-        else:
-            eventid = sys.argv[2]
-            response = m.search(controller='attributes', type_attribute="btc", eventid=eventid)
-    elif sys.argv[1] == "-h":
-        print("Usage: %s [<TIME> | -b <BTC address> | -e <EVENTID> | -a <TIMEFRAME> | -a <TIMEFRAME_FROM> <TIMEFRAME_TO>]" % sys.argv[0])
-        print("       where <TIME>, <TIMEFRAME>, <TIMEFRAME_FROM>, <TIMEFRAME_TO> can be a statement recognized by MISP, e.g. 1d, 1h")
-        print("       Just giving <TIME> by default shows all attributes of events published since <TIME>")
-        print("       Specifying -a is an attribute search and the time specified is related to the attribute modification/creation")
-        print("     or")
-        print("       -a <TIMEFRAME>")
-        print("     or")
-        print("       -a <TIMEFRAME_FROM> <TIMEFRAME_TO>")
-        print("     or")
-        print("       -b <BTC address> where <BTC address> is a valid BTC address")
-        print("     or")
-        print("       -e <EVENTID> where <EVENTID> is a valid MISP event ID")
-        sys.exit(0)
+if args.a is not None:
+    if len(args.a) > 1:
+        timestamp=args.a
     else:
-        timerange = sys.argv[1]
-except SystemExit:
-    sys.exit(0)
-except Exception as e:
-    print(e)
-    timerange = "1d"
-    print("Defaulting to all attributes of events published during the last day")
+        timestamp=args.a[0]
+    response = m.search(controller='attributes', type_attribute="btc", timestamp=timestamp)
+
+if args.b is not None:
+    btc = args.b
+
+if args.e is not None:
+    eventid = args.e
+    response = m.search(controller='attributes', type_attribute="btc", eventid=eventid)
+
+if args.t is not None:
+    timerange=args.t
+    response = m.search(controller='attributes', type_attribute="btc", last=str(timerange))
 
 try: timerange
 except NameError: timerange = None
